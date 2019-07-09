@@ -25,20 +25,22 @@
  */
 package org.wltea.analyzer.dic;
 
+import org.wltea.analyzer.cfg.Configuration;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
-
-import org.wltea.analyzer.cfg.Configuration;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 词典管理类,单子模式
  */
 public class Dictionary {
-
 
 	/*
 	 * 词典单子实例
@@ -69,6 +71,7 @@ public class Dictionary {
 		this.loadMainDict();
 		this.loadStopWordDict();
 		this.loadQuantifierDict();
+		this.scheduleLoadDic(2); // 每天凌晨2点载入词典
 	}
 	
 	/**
@@ -358,5 +361,29 @@ public class Dictionary {
 			}
 		}
 	}
-	
+
+	/**
+	 * 定时载入词典
+	 * @param hour 1-24
+     */
+	public void scheduleLoadDic(int hour){
+		Calendar next_exec_date = Calendar.getInstance();
+		next_exec_date.set(Calendar.MINUTE, 0);
+		next_exec_date.set(Calendar.SECOND, 0);
+		next_exec_date.set(Calendar.MILLISECOND, 0);
+		next_exec_date.set(Calendar.HOUR_OF_DAY,hour);
+		if(Calendar.getInstance().get(Calendar.HOUR_OF_DAY) >= hour){
+			next_exec_date.add(Calendar.DATE,1);
+		}
+		long initialDelay = next_exec_date.getTimeInMillis() - System.currentTimeMillis();
+		new ScheduledThreadPoolExecutor(2).scheduleAtFixedRate(new Runnable() {
+			public void run() {
+				try {
+					loadMainDict();
+				}catch (Exception e){
+					System.out.println(e.getMessage());
+				}
+			}
+		}, initialDelay, 24 * 60 * 60 * 1000, TimeUnit.MILLISECONDS);
+	}
 }
